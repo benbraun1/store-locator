@@ -488,6 +488,11 @@
     </div>
   </div>
 
+  <div id="country-filter-wrap" style="display:none; padding: 14px 20px; border-bottom: 1px solid var(--border);">
+    <div class="filter-label">Pays</div>
+    <div class="filter-chips" id="country-chips"></div>
+  </div>
+
   <div id="stats-bar">
     <div id="store-count">— boutiques affichées</div>
   </div>
@@ -505,6 +510,7 @@
     <div class="legend-item"><span class="legend-dot" style="background:var(--faire)"></span> Faire</div>
     <div class="legend-item"><span class="legend-dot" style="background:var(--ankorstore)"></span> Ankorstore</div>
     <div class="legend-item"><span class="legend-dot" style="background:var(--multi)"></span> Multi-canal</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#555"></span> <span style="color:var(--text-dim)">Inactif &gt;12 mois</span></div>
   </div>
 
   <!-- DETAIL PANEL -->
@@ -559,8 +565,8 @@ let allStores = [];
 let visibleStores = [];
 let markers = {};
 let activeFilters = new Set(["b2b", "faire", "ankorstore", "multi"]);
+let activeCountries = new Set();
 let selectedId = null;
-let geocodeCache = {};
 
 // ── MAP INIT ─────────────────────────────────────────────────────────────────
 const map = L.map("map", { zoomControl: true }).setView([47.5, 5], 5);
@@ -568,37 +574,6 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "© OpenStreetMap contributors",
   maxZoom: 19,
 }).addTo(map);
-
-// ── GEOCODE CACHE ────────────────────────────────────────────────────────────
-try {
-  const raw = localStorage.getItem(GEOCODE_CACHE_KEY);
-  if (raw) geocodeCache = JSON.parse(raw);
-} catch(e) {}
-
-function saveCache() {
-  try { localStorage.setItem(GEOCODE_CACHE_KEY, JSON.stringify(geocodeCache)); } catch(e) {}
-}
-
-async function geocode(store) {
-  const key = `${store.city}||${store.country}`;
-  if (geocodeCache[key]) return geocodeCache[key];
-
-  await new Promise(r => setTimeout(r, 1100)); // Nominatim rate limit
-  const q = encodeURIComponent(`${store.city}, ${store.country}`);
-  try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
-      headers: { "Accept-Language": "fr" }
-    });
-    const data = await res.json();
-    if (data && data[0]) {
-      const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-      geocodeCache[key] = coords;
-      saveCache();
-      return coords;
-    }
-  } catch(e) {}
-  return null;
-}
 
 // ── PARSE CHANNEL ─────────────────────────────────────────────────────────────
 function parseChannel(tags) {
@@ -626,6 +601,10 @@ function parseCSV(csvText) {
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - MAX_AGE_MONTHS);
 
+  const now = new Date();
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
   const stores = [];
 
   topRows.forEach((r, i) => {
@@ -639,8 +618,13 @@ function parseCSV(csvText) {
     const city    = r["Address City"] || "";
     const country = r["Address Country"] || "";
     const zip     = r["Address Zip"] || "";
+    const lat     = parseFloat(r["_lat"]) || null;
+    const lng     = parseFloat(r["_lng"]) || null;
 
-    if (!city && !country) return; // skip if no location
+    if (!city && !country) return;
+
+    // Points > 12 months are grey regardless of channel
+    const isActive = lastOrderDate >= twelveMonthsAgo;
 
     stores.push({
       id:          r["ID"] || String(i),
@@ -651,15 +635,19 @@ function parseCSV(csvText) {
       zip,
       address:     r["Address Line 1"] || "",
       channel,
+      isActive,
       tags:        r["Tags"] || "",
       lastDate:    lastOrderDate,
       lastAmount:  parseFloat(r["Last Order: Price Total"]) || 0,
       lifetime:    parseFloat(r["Total Spent"]) || 0,
       totalOrders: parseInt(r["Total Orders"]) || 0,
-      lat:         null,
-      lng:         null,
+      lat,
+      lng,
     });
   });
+
+  // Sort by last order date descending
+  stores.sort((a, b) => b.lastDate - a.lastDate);
 
   return stores;
 }
@@ -680,7 +668,7 @@ function channelLabel(ch) {
 
 // ── MARKER CREATION ───────────────────────────────────────────────────────────
 function makeMarker(store) {
-  const color = COLORS[store.channel] || COLORS.unknown;
+  const color = store.isActive ? (COLORS[store.channel] || COLORS.unknown) : "#555";
   const icon = L.divIcon({
     className: "",
     html: `<div style="
@@ -739,7 +727,7 @@ function renderList(stores) {
   list.innerHTML = "";
 
   stores.forEach(store => {
-    const color = COLORS[store.channel] || COLORS.unknown;
+    const color = store.isActive ? (COLORS[store.channel] || COLORS.unknown) : "#555";
     const el = document.createElement("div");
     el.className = "store-item";
     el.dataset.id = store.id;
@@ -770,11 +758,12 @@ function applyFilters() {
   visibleStores = allStores.filter(s => {
     const channelOk = activeFilters.has(s.channel) ||
       (s.channel === "unknown" && activeFilters.size > 0);
+    const countryOk = activeCountries.size === 0 || activeCountries.has(s.country);
     const searchOk = !query ||
       s.name.toLowerCase().includes(query) ||
       s.city.toLowerCase().includes(query) ||
       s.country.toLowerCase().includes(query);
-    return channelOk && searchOk;
+    return channelOk && countryOk && searchOk;
   });
 
   // Update markers visibility
@@ -789,42 +778,42 @@ function applyFilters() {
   renderList(visibleStores);
 }
 
-// ── GEOCODE & POPULATE ────────────────────────────────────────────────────────
-async function geocodeAll(stores) {
-  let done = 0;
+// ── BUILD COUNTRY FILTER ──────────────────────────────────────────────────────
+function buildCountryFilter(stores) {
+  const countries = [...new Set(stores.map(s => s.country).filter(Boolean))].sort();
+  
+  // Init all countries as active
+  countries.forEach(c => activeCountries.add(c));
 
-  // First pass: check cache
-  for (const store of stores) {
-    const key = `${store.city}||${store.country}`;
-    if (geocodeCache[key]) {
-      store.lat = geocodeCache[key].lat;
-      store.lng = geocodeCache[key].lng;
-      done++;
-    }
-  }
+  const wrap = document.getElementById("country-filter-wrap");
+  const chipsEl = document.getElementById("country-chips");
+  if (countries.length <= 1) { wrap.style.display = "none"; return; }
 
-  const toGeocode = stores.filter(s => !s.lat);
-  const total = stores.length;
+  wrap.style.display = "block";
+  chipsEl.innerHTML = "";
 
-  document.getElementById("loading-status").textContent =
-    `Géocodage… ${done}/${total} boutiques`;
-
-  for (const store of toGeocode) {
-    const coords = await geocode(store);
-    if (coords) {
-      store.lat = coords.lat;
-      store.lng = coords.lng;
-    }
-    done++;
-    document.getElementById("loading-status").textContent =
-      `Géocodage… ${done}/${total} boutiques`;
-  }
+  countries.forEach(country => {
+    const chip = document.createElement("div");
+    chip.className = "chip active";
+    chip.dataset.country = country;
+    chip.innerHTML = `${country}`;
+    chip.addEventListener("click", () => {
+      chip.classList.toggle("active");
+      if (chip.classList.contains("active")) {
+        activeCountries.add(country);
+      } else {
+        activeCountries.delete(country);
+      }
+      applyFilters();
+    });
+    chipsEl.appendChild(chip);
+  });
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 async function init() {
   try {
-    document.getElementById("loading-status").textContent = "Chargement du fichier clients…";
+    document.getElementById("loading-status").textContent = "Chargement des boutiques…";
 
     const res = await fetch(CSV_URL);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -836,7 +825,8 @@ async function init() {
 
     if (allStores.length === 0) throw new Error("Aucune boutique active trouvée");
 
-    await geocodeAll(allStores);
+    // Build country filter from data
+    buildCountryFilter(allStores);
 
     // Create markers for geocoded stores
     allStores.forEach(store => {
@@ -864,8 +854,6 @@ async function init() {
     errEl.style.display = "block";
     errEl.textContent = `Erreur : ${err.message}`;
     console.error(err);
-
-    // Hide spinner after error
     document.querySelector(".loading-fill").style.animation = "none";
   }
 }
