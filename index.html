@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Les Imprimeuses — Store Locator</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f0f0f;
+      --surface: #191919;
+      --surface2: #222222;
+      --border: #2e2e2e;
+      --text: #e8e8e8;
+      --text-muted: #888;
+      --text-dim: #555;
+
+      --b2b: #4a9eff;
+      --faire: #ff8c42;
+      --ankorstore: #b06fff;
+      --multi: #ffd166;
+      --inactive: #555;
+
+      --panel-width: 340px;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── SIDEBAR ── */
+    #sidebar {
+      width: var(--panel-width);
+      min-width: var(--panel-width);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    #sidebar-header {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    #sidebar-header h1 {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    /* ── SEARCH ── */
+    #search-wrap {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #search {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 9px 12px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    #search::placeholder { color: var(--text-dim); }
+    #search:focus { border-color: #444; }
+
+    /* ── FILTERS ── */
+    #filters {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .filter-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
+
+    .filter-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+      color: var(--text-muted);
+    }
+
+    .chip.active { color: var(--text); }
+    .chip:hover { border-color: #444; }
+
+    .chip-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .chip[data-channel="b2b"] .chip-dot { background: var(--b2b); }
+    .chip[data-channel="faire"] .chip-dot { background: var(--faire); }
+    .chip[data-channel="ankorstore"] .chip-dot { background: var(--ankorstore); }
+    .chip[data-channel="multi"] .chip-dot { background: var(--multi); }
+
+    .chip[data-channel="b2b"].active { border-color: var(--b2b); background: rgba(74,158,255,0.08); }
+    .chip[data-channel="faire"].active { border-color: var(--faire); background: rgba(255,140,66,0.08); }
+    .chip[data-channel="ankorstore"].active { border-color: var(--ankorstore); background: rgba(176,111,255,0.08); }
+    .chip[data-channel="multi"].active { border-color: var(--multi); background: rgba(255,209,102,0.08); }
+
+    /* ── STATS ── */
+    #stats-bar {
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #store-count {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    #store-count span {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    /* ── STORE LIST ── */
+    #store-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    #store-list::-webkit-scrollbar { width: 4px; }
+    #store-list::-webkit-scrollbar-track { background: transparent; }
+    #store-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .store-item {
+      padding: 11px 20px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: all 0.12s;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .store-item:hover { background: var(--surface2); }
+    .store-item.active { background: var(--surface2); }
+
+    .store-item.active[data-channel="b2b"] { border-left-color: var(--b2b); }
+    .store-item.active[data-channel="faire"] { border-left-color: var(--faire); }
+    .store-item.active[data-channel="ankorstore"] { border-left-color: var(--ankorstore); }
+    .store-item.active[data-channel="multi"] { border-left-color: var(--multi); }
+
+    .store-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .store-info { flex: 1; min-width: 0; }
+
+    .store-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .store-city {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .store-last-order {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--text-dim);
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* ── DETAIL PANEL ── */
+    #detail-panel {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 300px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      z-index: 999;
+      overflow: hidden;
+      transform: translateY(20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    #detail-panel.visible {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    #detail-header {
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .detail-channel {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .detail-channel.b2b { color: var(--b2b); }
+    .detail-channel.faire { color: var(--faire); }
+    .detail-channel.ankorstore { color: var(--ankorstore); }
+    .detail-channel.multi { color: var(--multi); }
+
+    #detail-name {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    #detail-location {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    #detail-body {
+      padding: 14px 18px;
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .detail-row:last-child { border-bottom: none; }
+
+    .detail-key {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .detail-val {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    #detail-close {
+      position: absolute;
+      top: 12px; right: 14px;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 18px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color 0.1s;
+    }
+
+    #detail-close:hover { color: var(--text); }
+
+    /* ── LEGEND ── */
+    #legend {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      z-index: 998;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .legend-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .legend-item:last-child { margin-bottom: 0; }
+
+    .legend-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+
+    /* ── MAP ── */
+    #map {
+      flex: 1;
+      background: #1a1a1a;
+      position: relative;
+    }
+
+    /* ── LOADING ── */
+    #loading {
+      position: absolute;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      gap: 16px;
+      transition: opacity 0.4s;
+    }
+
+    #loading.hidden { opacity: 0; pointer-events: none; }
+
+    .loading-logo {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .loading-bar {
+      width: 200px;
+      height: 2px;
+      background: var(--border);
+      border-radius: 1px;
+      overflow: hidden;
+    }
+
+    .loading-fill {
+      height: 100%;
+      background: var(--text-muted);
+      border-radius: 1px;
+      animation: loading 1.5s ease-in-out infinite;
+    }
+
+    @keyframes loading {
+      0% { width: 0%; margin-left: 0; }
+      50% { width: 60%; margin-left: 20%; }
+      100% { width: 0%; margin-left: 100%; }
+    }
+
+    .loading-status {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    /* ── ERROR ── */
+    #error-msg {
+      display: none;
+      padding: 12px 20px;
+      background: rgba(255,80,80,0.1);
+      border-top: 1px solid rgba(255,80,80,0.2);
+      font-size: 12px;
+      color: #ff6b6b;
+    }
+
+    /* Leaflet dark override */
+    .leaflet-tile-pane { filter: brightness(0.75) saturate(0.5); }
+    .leaflet-control-zoom a {
+      background: var(--surface) !important;
+      color: var(--text) !important;
+      border-color: var(--border) !important;
+    }
+    .leaflet-control-zoom a:hover { background: var(--surface2) !important; }
+    .leaflet-control-attribution {
+      background: rgba(15,15,15,0.7) !important;
+      color: var(--text-dim) !important;
+    }
+    .leaflet-control-attribution a { color: var(--text-dim) !important; }
+  </style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="loading-logo">Les Imprimeuses</div>
+  <div class="loading-bar"><div class="loading-fill"></div></div>
+  <div class="loading-status" id="loading-status">Chargement des boutiques…</div>
+</div>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div id="sidebar-header">
+    <div class="logo">Les Imprimeuses</div>
+    <h1>Store Locator</h1>
+  </div>
+
+  <div id="search-wrap">
+    <input type="text" id="search" placeholder="Rechercher une boutique…" autocomplete="off" />
+  </div>
+
+  <div id="filters">
+    <div class="filter-label">Canal</div>
+    <div class="filter-chips">
+      <div class="chip active" data-channel="b2b">
+        <span class="chip-dot"></span> Direct B2B
+      </div>
+      <div class="chip active" data-channel="faire">
+        <span class="chip-dot"></span> Faire
+      </div>
+      <div class="chip active" data-channel="ankorstore">
+        <span class="chip-dot"></span> Ankorstore
+      </div>
+      <div class="chip active" data-channel="multi">
+        <span class="chip-dot"></span> Multi-canal
+      </div>
+    </div>
+  </div>
+
+  <div id="stats-bar">
+    <div id="store-count">— boutiques affichées</div>
+  </div>
+
+  <div id="store-list"></div>
+  <div id="error-msg"></div>
+</div>
+
+<!-- MAP -->
+<div id="map">
+  <!-- LEGEND -->
+  <div id="legend">
+    <div class="legend-title">Canal</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--b2b)"></span> Direct B2B</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--faire)"></span> Faire</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--ankorstore)"></span> Ankorstore</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--multi)"></span> Multi-canal</div>
+  </div>
+
+  <!-- DETAIL PANEL -->
+  <div id="detail-panel">
+    <button id="detail-close">×</button>
+    <div id="detail-header">
+      <div class="detail-channel" id="detail-channel"></div>
+      <div id="detail-name"></div>
+      <div id="detail-location"></div>
+    </div>
+    <div id="detail-body">
+      <div class="detail-row">
+        <span class="detail-key">Dernière commande</span>
+        <span class="detail-val" id="detail-last-date"></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-key">Montant</span>
+        <span class="detail-val" id="detail-last-amount"></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-key">Total lifetime</span>
+        <span class="detail-val" id="detail-lifetime"></span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-key">Nb commandes</span>
+        <span class="detail-val" id="detail-orders"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script>
+
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const CSV_URL = "https://script.google.com/a/macros/lesimprimeuses.com/s/AKfycbwDtr4yVfq_iZTDFZ5ucoCWXfgyL3h63jo6Y6Wq2ix9mmsCQv-56jXzbRDMcrTTdlPkpQ/exec?key=lesimprimeuses2024";
+const MAX_AGE_MONTHS = 18;
+const GEOCODE_CACHE_KEY = "li_geocache_v1";
+
+// ── COLORS ──────────────────────────────────────────────────────────────────
+const COLORS = {
+  b2b:        "#4a9eff",
+  faire:      "#ff8c42",
+  ankorstore: "#b06fff",
+  multi:      "#ffd166",
+  unknown:    "#666",
+};
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let allStores = [];
+let visibleStores = [];
+let markers = {};
+let activeFilters = new Set(["b2b", "faire", "ankorstore", "multi"]);
+let selectedId = null;
+let geocodeCache = {};
+
+// ── MAP INIT ─────────────────────────────────────────────────────────────────
+const map = L.map("map", { zoomControl: true }).setView([47.5, 5], 5);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "© OpenStreetMap contributors",
+  maxZoom: 19,
+}).addTo(map);
+
+// ── GEOCODE CACHE ────────────────────────────────────────────────────────────
+try {
+  const raw = localStorage.getItem(GEOCODE_CACHE_KEY);
+  if (raw) geocodeCache = JSON.parse(raw);
+} catch(e) {}
+
+function saveCache() {
+  try { localStorage.setItem(GEOCODE_CACHE_KEY, JSON.stringify(geocodeCache)); } catch(e) {}
+}
+
+async function geocode(store) {
+  const key = `${store.city}||${store.country}`;
+  if (geocodeCache[key]) return geocodeCache[key];
+
+  await new Promise(r => setTimeout(r, 1100)); // Nominatim rate limit
+  const q = encodeURIComponent(`${store.city}, ${store.country}`);
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
+      headers: { "Accept-Language": "fr" }
+    });
+    const data = await res.json();
+    if (data && data[0]) {
+      const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      geocodeCache[key] = coords;
+      saveCache();
+      return coords;
+    }
+  } catch(e) {}
+  return null;
+}
+
+// ── PARSE CHANNEL ─────────────────────────────────────────────────────────────
+function parseChannel(tags) {
+  const t = (tags || "").toLowerCase();
+  const hasFaire = t.includes("faire");
+  const hasAnkor = t.includes("ankorstore");
+  const hasB2b   = t.includes("b2b");
+
+  const platforms = (hasFaire ? 1 : 0) + (hasAnkor ? 1 : 0) + (hasB2b ? 1 : 0);
+  if (platforms > 1) return "multi";
+  if (hasB2b) return "b2b";
+  if (hasFaire) return "faire";
+  if (hasAnkor) return "ankorstore";
+  return "unknown";
+}
+
+// ── PARSE CSV ─────────────────────────────────────────────────────────────────
+function parseCSV(csvText) {
+  const result = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+  const rows = result.data;
+
+  // Keep only "Top Row" = true (one row per customer)
+  const topRows = rows.filter(r => (r["Top Row"] || "").toLowerCase() === "true");
+
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - MAX_AGE_MONTHS);
+
+  const stores = [];
+
+  topRows.forEach((r, i) => {
+    const lastOrderDate = r["Last Order: Processed At"] ? new Date(r["Last Order: Processed At"]) : null;
+
+    // Filter inactive
+    if (!lastOrderDate || lastOrderDate < cutoff) return;
+
+    const channel = parseChannel(r["Tags"]);
+    const company = r["Address Company"] || `${r["First Name"]} ${r["Last Name"]}`.trim();
+    const city    = r["Address City"] || "";
+    const country = r["Address Country"] || "";
+    const zip     = r["Address Zip"] || "";
+
+    if (!city && !country) return; // skip if no location
+
+    stores.push({
+      id:          r["ID"] || String(i),
+      name:        company,
+      email:       r["Email"] || "",
+      city,
+      country,
+      zip,
+      address:     r["Address Line 1"] || "",
+      channel,
+      tags:        r["Tags"] || "",
+      lastDate:    lastOrderDate,
+      lastAmount:  parseFloat(r["Last Order: Price Total"]) || 0,
+      lifetime:    parseFloat(r["Total Spent"]) || 0,
+      totalOrders: parseInt(r["Total Orders"]) || 0,
+      lat:         null,
+      lng:         null,
+    });
+  });
+
+  return stores;
+}
+
+// ── FORMAT HELPERS ────────────────────────────────────────────────────────────
+function fmtDate(d) {
+  if (!d) return "—";
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function fmtEuro(n) {
+  return n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+}
+
+function channelLabel(ch) {
+  return { b2b: "Direct B2B", faire: "Faire", ankorstore: "Ankorstore", multi: "Multi-canal", unknown: "—" }[ch] || ch;
+}
+
+// ── MARKER CREATION ───────────────────────────────────────────────────────────
+function makeMarker(store) {
+  const color = COLORS[store.channel] || COLORS.unknown;
+  const icon = L.divIcon({
+    className: "",
+    html: `<div style="
+      width:14px;height:14px;
+      border-radius:50%;
+      background:${color};
+      border:2px solid rgba(255,255,255,0.25);
+      box-shadow:0 0 0 3px ${color}33, 0 2px 8px rgba(0,0,0,0.5);
+      cursor:pointer;
+      transition:transform 0.15s;
+    "></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+
+  const marker = L.marker([store.lat, store.lng], { icon })
+    .addTo(map)
+    .on("click", () => selectStore(store.id));
+
+  return marker;
+}
+
+// ── SELECT STORE ──────────────────────────────────────────────────────────────
+function selectStore(id) {
+  selectedId = id;
+  const store = allStores.find(s => s.id === id);
+  if (!store) return;
+
+  // Update sidebar list
+  document.querySelectorAll(".store-item").forEach(el => {
+    el.classList.toggle("active", el.dataset.id === id);
+  });
+
+  // Fly to marker
+  if (store.lat && store.lng) {
+    map.flyTo([store.lat, store.lng], Math.max(map.getZoom(), 12), { duration: 0.8 });
+  }
+
+  // Show detail panel
+  const panel = document.getElementById("detail-panel");
+  const ch = store.channel;
+  document.getElementById("detail-channel").textContent = channelLabel(ch);
+  document.getElementById("detail-channel").className = `detail-channel ${ch}`;
+  document.getElementById("detail-name").textContent = store.name;
+  document.getElementById("detail-location").textContent = [store.city, store.country].filter(Boolean).join(", ");
+  document.getElementById("detail-last-date").textContent = fmtDate(store.lastDate);
+  document.getElementById("detail-last-amount").textContent = fmtEuro(store.lastAmount);
+  document.getElementById("detail-lifetime").textContent = fmtEuro(store.lifetime);
+  document.getElementById("detail-orders").textContent = store.totalOrders;
+  panel.classList.add("visible");
+}
+
+// ── RENDER LIST ───────────────────────────────────────────────────────────────
+function renderList(stores) {
+  const list = document.getElementById("store-list");
+  list.innerHTML = "";
+
+  stores.forEach(store => {
+    const color = COLORS[store.channel] || COLORS.unknown;
+    const el = document.createElement("div");
+    el.className = "store-item";
+    el.dataset.id = store.id;
+    el.dataset.channel = store.channel;
+    if (store.id === selectedId) el.classList.add("active");
+
+    el.innerHTML = `
+      <span class="store-dot" style="background:${color}"></span>
+      <div class="store-info">
+        <div class="store-name">${store.name}</div>
+        <div class="store-city">${store.city}${store.country && store.country !== "France" ? ", " + store.country : ""}</div>
+      </div>
+      <div class="store-last-order">${fmtDate(store.lastDate)}</div>
+    `;
+
+    el.addEventListener("click", () => selectStore(store.id));
+    list.appendChild(el);
+  });
+
+  document.getElementById("store-count").innerHTML =
+    `<span>${stores.length}</span> boutique${stores.length > 1 ? "s" : ""} affichée${stores.length > 1 ? "s" : ""}`;
+}
+
+// ── FILTER & RENDER MAP ───────────────────────────────────────────────────────
+function applyFilters() {
+  const query = document.getElementById("search").value.toLowerCase().trim();
+
+  visibleStores = allStores.filter(s => {
+    const channelOk = activeFilters.has(s.channel) ||
+      (s.channel === "unknown" && activeFilters.size > 0);
+    const searchOk = !query ||
+      s.name.toLowerCase().includes(query) ||
+      s.city.toLowerCase().includes(query) ||
+      s.country.toLowerCase().includes(query);
+    return channelOk && searchOk;
+  });
+
+  // Update markers visibility
+  allStores.forEach(store => {
+    const marker = markers[store.id];
+    if (!marker) return;
+    const visible = visibleStores.includes(store);
+    if (visible && !map.hasLayer(marker)) marker.addTo(map);
+    if (!visible && map.hasLayer(marker)) map.removeLayer(marker);
+  });
+
+  renderList(visibleStores);
+}
+
+// ── GEOCODE & POPULATE ────────────────────────────────────────────────────────
+async function geocodeAll(stores) {
+  let done = 0;
+
+  // First pass: check cache
+  for (const store of stores) {
+    const key = `${store.city}||${store.country}`;
+    if (geocodeCache[key]) {
+      store.lat = geocodeCache[key].lat;
+      store.lng = geocodeCache[key].lng;
+      done++;
+    }
+  }
+
+  const toGeocode = stores.filter(s => !s.lat);
+  const total = stores.length;
+
+  document.getElementById("loading-status").textContent =
+    `Géocodage… ${done}/${total} boutiques`;
+
+  for (const store of toGeocode) {
+    const coords = await geocode(store);
+    if (coords) {
+      store.lat = coords.lat;
+      store.lng = coords.lng;
+    }
+    done++;
+    document.getElementById("loading-status").textContent =
+      `Géocodage… ${done}/${total} boutiques`;
+  }
+}
+
+// ── MAIN ──────────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    document.getElementById("loading-status").textContent = "Chargement du fichier clients…";
+
+    const res = await fetch(CSV_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+
+    if (text.startsWith("Unauthorized")) throw new Error("Clé API invalide");
+
+    allStores = parseCSV(text);
+
+    if (allStores.length === 0) throw new Error("Aucune boutique active trouvée");
+
+    await geocodeAll(allStores);
+
+    // Create markers for geocoded stores
+    allStores.forEach(store => {
+      if (store.lat && store.lng) {
+        markers[store.id] = makeMarker(store);
+      }
+    });
+
+    // Fit map to markers
+    const geocoded = allStores.filter(s => s.lat && s.lng);
+    if (geocoded.length > 0) {
+      const group = L.featureGroup(Object.values(markers));
+      map.fitBounds(group.getBounds().pad(0.1));
+    }
+
+    applyFilters();
+
+    // Hide loading
+    document.getElementById("loading").classList.add("hidden");
+    setTimeout(() => document.getElementById("loading").style.display = "none", 400);
+
+  } catch(err) {
+    document.getElementById("loading-status").textContent = "Erreur de chargement";
+    const errEl = document.getElementById("error-msg");
+    errEl.style.display = "block";
+    errEl.textContent = `Erreur : ${err.message}`;
+    console.error(err);
+
+    // Hide spinner after error
+    document.querySelector(".loading-fill").style.animation = "none";
+  }
+}
+
+// ── EVENT LISTENERS ───────────────────────────────────────────────────────────
+document.querySelectorAll(".chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    const ch = chip.dataset.channel;
+    chip.classList.toggle("active");
+    if (chip.classList.contains("active")) {
+      activeFilters.add(ch);
+    } else {
+      activeFilters.delete(ch);
+    }
+    applyFilters();
+  });
+});
+
+document.getElementById("search").addEventListener("input", applyFilters);
+
+document.getElementById("detail-close").addEventListener("click", () => {
+  document.getElementById("detail-panel").classList.remove("visible");
+  selectedId = null;
+  document.querySelectorAll(".store-item").forEach(el => el.classList.remove("active"));
+});
+
+map.on("click", () => {
+  document.getElementById("detail-panel").classList.remove("visible");
+  selectedId = null;
+  document.querySelectorAll(".store-item").forEach(el => el.classList.remove("active"));
+});
+
+// ── START ─────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
