@@ -618,8 +618,8 @@ function parseCSV(csvText) {
     const city    = r["Address City"] || "";
     const country = r["Address Country"] || "";
     const zip     = r["Address Zip"] || "";
-    const lat     = parseFloat(r["_lat"]) || null;
-    const lng     = parseFloat(r["_lng"]) || null;
+    const lat = parseFloat((r["_lat"] || "").toString().replace(",", ".")) || null;
+    const lng = parseFloat((r["_lng"] || "").toString().replace(",", ".")) || null;
 
     if (!city && !country) return;
 
