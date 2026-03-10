@@ -222,6 +222,9 @@
       margin-top: 1px;
     }
 
+    .store-item.inactive .store-name { color: var(--text-muted); }
+    .store-item.inactive .store-last-order { color: var(--text-dim); }
+
     .store-last-order {
       font-family: 'DM Mono', monospace;
       font-size: 10px;
@@ -494,7 +497,9 @@
   </div>
 
   <div id="stats-bar">
-    <div id="store-count">— boutiques affichées</div>
+    <div id="store-count">
+      <span id="count-active">—</span> actives · <span id="count-inactive">—</span> inactives
+    </div>
   </div>
 
   <div id="store-list"></div>
@@ -726,10 +731,15 @@ function renderList(stores) {
   const list = document.getElementById("store-list");
   list.innerHTML = "";
 
-  stores.forEach(store => {
+  const active = stores.filter(s => s.isActive);
+  const inactive = stores.filter(s => !s.isActive);
+
+  // Active stores first, then inactive with a separator
+  const renderStore = (store) => {
     const color = store.isActive ? (COLORS[store.channel] || COLORS.unknown) : "#555";
     const el = document.createElement("div");
     el.className = "store-item";
+    if (!store.isActive) el.classList.add("inactive");
     el.dataset.id = store.id;
     el.dataset.channel = store.channel;
     if (store.id === selectedId) el.classList.add("active");
@@ -742,35 +752,66 @@ function renderList(stores) {
       </div>
       <div class="store-last-order">${fmtDate(store.lastDate)}</div>
     `;
-
     el.addEventListener("click", () => selectStore(store.id));
     list.appendChild(el);
-  });
+  };
 
-  document.getElementById("store-count").innerHTML =
-    `<span>${stores.length}</span> boutique${stores.length > 1 ? "s" : ""} affichée${stores.length > 1 ? "s" : ""}`;
+  active.forEach(renderStore);
+
+  if (inactive.length > 0) {
+    const sep = document.createElement("div");
+    sep.style.cssText = `
+      padding: 8px 20px 6px;
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+    `;
+    sep.textContent = "Inactifs > 12 mois";
+    list.appendChild(sep);
+    inactive.forEach(renderStore);
+  }
+
+  document.getElementById("count-active").textContent =
+    `${active.length} boutique${active.length > 1 ? "s" : ""} active${active.length > 1 ? "s" : ""}`;
+  document.getElementById("count-inactive").textContent =
+    `${inactive.length} inactive${inactive.length > 1 ? "s" : ""}`;
 }
 
 // ── FILTER & RENDER MAP ───────────────────────────────────────────────────────
 function applyFilters() {
   const query = document.getElementById("search").value.toLowerCase().trim();
+  const bounds = map.getBounds();
 
   visibleStores = allStores.filter(s => {
     const channelOk = activeFilters.has(s.channel) ||
       (s.channel === "unknown" && activeFilters.size > 0);
     const countryOk = activeCountries.size === 0 || activeCountries.has(s.country);
-    const searchOk = !query ||
-      s.name.toLowerCase().includes(query) ||
-      s.city.toLowerCase().includes(query) ||
-      s.country.toLowerCase().includes(query);
-    return channelOk && countryOk && searchOk;
+
+    if (query) {
+      // Search mode : ignore map bounds, filter by query on active only
+      const searchOk = s.name.toLowerCase().includes(query) ||
+        s.city.toLowerCase().includes(query) ||
+        s.country.toLowerCase().includes(query);
+      return channelOk && countryOk && searchOk;
+    } else {
+      // Browse mode : filter by map bounds, show active + inactive
+      const inBounds = !s.lat || !s.lng || bounds.contains([s.lat, s.lng]);
+      return channelOk && countryOk && inBounds;
+    }
   });
 
-  // Update markers visibility
+  // Markers: only show active stores that pass channel/country filters
   allStores.forEach(store => {
     const marker = markers[store.id];
     if (!marker) return;
-    const visible = visibleStores.includes(store);
+    const channelOk = activeFilters.has(store.channel) ||
+      (store.channel === "unknown" && activeFilters.size > 0);
+    const countryOk = activeCountries.size === 0 || activeCountries.has(store.country);
+    const visible = channelOk && countryOk;
     if (visible && !map.hasLayer(marker)) marker.addTo(map);
     if (!visible && map.hasLayer(marker)) map.removeLayer(marker);
   });
@@ -884,6 +925,12 @@ map.on("click", () => {
   document.getElementById("detail-panel").classList.remove("visible");
   selectedId = null;
   document.querySelectorAll(".store-item").forEach(el => el.classList.remove("active"));
+});
+
+map.on("moveend", () => {
+  if (!document.getElementById("search").value.trim()) {
+    applyFilters();
+  }
 });
 
 // ── START ─────────────────────────────────────────────────────────────────────
