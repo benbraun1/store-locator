@@ -496,11 +496,6 @@
     </div>
   </div>
 
-  <div id="country-filter-wrap" style="display:none; padding: 14px 20px; border-bottom: 1px solid var(--border);">
-    <div class="filter-label">Pays</div>
-    <div class="filter-chips" id="country-chips"></div>
-  </div>
-
   <div id="stats-bar">
     <div id="store-count">
       <span id="count-active">—</span> actives · <span id="count-inactive">—</span> inactives
@@ -558,7 +553,6 @@
 
 // ── CONFIG ──────────────────────────────────────────────────────────────────
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj2gRYapY0uubGcn3v5ISdfLXrRH9iX4nRhckJXfy1iVSY_sKia9P8cBiAxc7DBcJ1tdqoTh_yunJG/pub?gid=1600549034&single=true&output=csv";
-const MAX_AGE_MONTHS = 18;
 const GEOCODE_CACHE_KEY = "li_geocache_v1";
 
 // ── COLORS ──────────────────────────────────────────────────────────────────
@@ -575,7 +569,6 @@ let allStores = [];
 let visibleStores = [];
 let markers = {};
 let activeFilters = new Set(["b2b", "faire", "ankorstore", "multi"]);
-let activeCountries = new Set();
 let selectedId = null;
 
 // ── MAP INIT ─────────────────────────────────────────────────────────────────
@@ -608,9 +601,6 @@ function parseCSV(csvText) {
   // Keep only "Top Row" = true (one row per customer)
   const topRows = rows.filter(r => (r["Top Row"] || "").toLowerCase() === "true");
 
-  const cutoff = new Date();
-  cutoff.setMonth(cutoff.getMonth() - MAX_AGE_MONTHS);
-
   const now = new Date();
   const twelveMonthsAgo = new Date();
   twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
@@ -618,10 +608,12 @@ function parseCSV(csvText) {
   const stores = [];
 
   topRows.forEach((r, i) => {
-    const lastOrderDate = r["Last Order: Processed At"] ? new Date(r["Last Order: Processed At"]) : null;
+    // Exclure les clients sans commande
+    const totalOrders = parseInt(r["Total Orders"]) || 0;
+    if (totalOrders === 0) return;
 
-    // Filter inactive
-    if (!lastOrderDate || lastOrderDate < cutoff) return;
+    const lastOrderDate = r["Last Order: Processed At"] ? new Date(r["Last Order: Processed At"]) : null;
+    if (!lastOrderDate) return;
 
     const channel = parseChannel(r["Tags"]);
     const company = r["Address Company"] || `${r["First Name"]} ${r["Last Name"]}`.trim();
@@ -633,7 +625,7 @@ function parseCSV(csvText) {
 
     if (!city && !country) return;
 
-    // Points > 12 months are grey regardless of channel
+    // Actif = commande < 12 mois → couleur canal ; sinon → gris
     const isActive = lastOrderDate >= twelveMonthsAgo;
 
     stores.push({
@@ -650,7 +642,7 @@ function parseCSV(csvText) {
       lastDate:    lastOrderDate,
       lastAmount:  parseFloat(r["Last Order: Price Total"]) || 0,
       lifetime:    parseFloat(r["Total Spent"]) || 0,
-      totalOrders: parseInt(r["Total Orders"]) || 0,
+      totalOrders,
       lat,
       lng,
     });
@@ -773,8 +765,9 @@ function renderList(stores) {
   const list = document.getElementById("store-list");
   list.innerHTML = "";
 
-  const active = stores.filter(s => s.isActive);
-  const inactive = stores.filter(s => !s.isActive);
+  const byDateDesc = (a, b) => (b.lastDate || 0) - (a.lastDate || 0);
+  const active = stores.filter(s => s.isActive).sort(byDateDesc);
+  const inactive = stores.filter(s => !s.isActive).sort(byDateDesc);
 
   // Active stores first, then inactive with a separator
   const renderStore = (store) => {
@@ -831,66 +824,29 @@ function applyFilters() {
   visibleStores = allStores.filter(s => {
     const channelOk = activeFilters.has(s.channel) ||
       (s.channel === "unknown" && activeFilters.size > 0);
-    const countryOk = activeCountries.size === 0 || activeCountries.has(s.country);
 
     if (query) {
-      // Search mode : ignore map bounds, filter by query on active only
       const searchOk = s.name.toLowerCase().includes(query) ||
         s.city.toLowerCase().includes(query) ||
         s.country.toLowerCase().includes(query);
-      return channelOk && countryOk && searchOk;
+      return channelOk && searchOk;
     } else {
-      // Browse mode : filter by map bounds, show active + inactive
       const inBounds = !s.lat || !s.lng || bounds.contains([s.lat, s.lng]);
-      return channelOk && countryOk && inBounds;
+      return channelOk && inBounds;
     }
   });
 
-  // Markers: only show active stores that pass channel/country filters
+  // Markers: only show stores that pass channel filter
   allStores.forEach(store => {
     const marker = markers[store.id];
     if (!marker) return;
     const channelOk = activeFilters.has(store.channel) ||
       (store.channel === "unknown" && activeFilters.size > 0);
-    const countryOk = activeCountries.size === 0 || activeCountries.has(store.country);
-    const visible = channelOk && countryOk;
-    if (visible && !map.hasLayer(marker)) marker.addTo(map);
-    if (!visible && map.hasLayer(marker)) map.removeLayer(marker);
+    if (channelOk && !map.hasLayer(marker)) marker.addTo(map);
+    if (!channelOk && map.hasLayer(marker)) map.removeLayer(marker);
   });
 
   renderList(visibleStores);
-}
-
-// ── BUILD COUNTRY FILTER ──────────────────────────────────────────────────────
-function buildCountryFilter(stores) {
-  const countries = [...new Set(stores.map(s => s.country).filter(Boolean))].sort();
-  
-  // Init all countries as active
-  countries.forEach(c => activeCountries.add(c));
-
-  const wrap = document.getElementById("country-filter-wrap");
-  const chipsEl = document.getElementById("country-chips");
-  if (countries.length <= 1) { wrap.style.display = "none"; return; }
-
-  wrap.style.display = "block";
-  chipsEl.innerHTML = "";
-
-  countries.forEach(country => {
-    const chip = document.createElement("div");
-    chip.className = "chip active";
-    chip.dataset.country = country;
-    chip.innerHTML = `${country}`;
-    chip.addEventListener("click", () => {
-      chip.classList.toggle("active");
-      if (chip.classList.contains("active")) {
-        activeCountries.add(country);
-      } else {
-        activeCountries.delete(country);
-      }
-      applyFilters();
-    });
-    chipsEl.appendChild(chip);
-  });
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
@@ -907,9 +863,6 @@ async function init() {
     allStores = parseCSV(text);
 
     if (allStores.length === 0) throw new Error("Aucune boutique active trouvée");
-
-    // Build country filter from data
-    buildCountryFilter(allStores);
 
     // Create markers for geocoded stores
     allStores.forEach(store => {
