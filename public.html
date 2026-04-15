@@ -233,7 +233,7 @@
 
     /* ── MOBILE DRAWER ── */
     #drawer {
-      display: none; /* shown via media query */
+      display: none;
       position: fixed;
       bottom: 0;
       left: 0;
@@ -242,17 +242,18 @@
       border-radius: 18px 18px 0 0;
       box-shadow: 0 -4px 30px rgba(84,33,93,0.15);
       z-index: 300;
-      /* Max height = presque tout l'écran */
-      max-height: calc(100dvh - 60px);
-      height: calc(100dvh - 60px);
-      /* Au repos : seul le peek (72px) dépasse du bas */
-      transform: translateY(calc(100% - var(--drawer-peek)));
-      transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
-      will-change: transform;
+      height: var(--drawer-peek);
+      overflow: hidden;
+      transition: height 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     #drawer.open {
-      transform: translateY(0);
+      height: calc(100dvh - 60px);
+    }
+
+    #drawer.open #drawer-list {
+      overflow-y: auto;
     }
 
     #drawer-handle {
