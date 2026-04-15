@@ -150,12 +150,14 @@
     .chip[data-segment="new"]        .chip-dot { background: var(--new); }
     .chip[data-segment="atrisk"]     .chip-dot { background: var(--atrisk); }
     .chip[data-segment="occasional"] .chip-dot { background: var(--occasional); }
+    .chip[data-segment="inactive"]   .chip-dot { background: var(--inactive); }
 
     .chip[data-segment="champion"].active   { border-color: var(--champion);   background: rgba(74,222,128,0.10); }
     .chip[data-segment="loyal"].active      { border-color: var(--loyal);      background: rgba(96,165,250,0.10); }
     .chip[data-segment="new"].active        { border-color: var(--new);        background: rgba(250,204,21,0.10); }
     .chip[data-segment="atrisk"].active     { border-color: var(--atrisk);     background: rgba(251,146,60,0.10); }
     .chip[data-segment="occasional"].active { border-color: var(--occasional); background: rgba(167,139,250,0.10); }
+    .chip[data-segment="inactive"].active   { border-color: var(--inactive);   background: rgba(120,120,120,0.10); }
 
     /* ── STATS ── */
     #stats-bar {
@@ -503,6 +505,9 @@
       <div class="chip active" data-segment="occasional">
         <span class="chip-dot"></span> Occasionnels
       </div>
+      <div class="chip active" data-segment="inactive">
+        <span class="chip-dot"></span> Inactifs
+      </div>
     </div>
   </div>
 
@@ -589,7 +594,7 @@ const SEGMENT_LABELS = {
 let allStores = [];
 let visibleStores = [];
 let markers = {};
-let activeFilters = new Set(["champion", "loyal", "new", "atrisk", "occasional"]);
+let activeFilters = new Set(["champion", "loyal", "new", "atrisk", "occasional", "inactive"]);
 let selectedId = null;
 
 // ── MAP INIT ─────────────────────────────────────────────────────────────────
@@ -869,9 +874,7 @@ function applyFilters() {
   const query = document.getElementById("search").value.toLowerCase().trim();
   const bounds = map.getBounds();
 
-  // Les filtres s'appliquent aux segments actifs ; les inactifs sont toujours
-  // affichés en gris (on ne met pas de chip pour eux — c'est un état, pas un segment).
-  const segmentOk = s => s.segment === "inactive" || activeFilters.has(s.segment);
+  const segmentOk = s => activeFilters.has(s.segment);
 
   visibleStores = allStores.filter(s => {
     if (!segmentOk(s)) return false;
