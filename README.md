@@ -1,14 +1,19 @@
 # Les Imprimeuses — Store Locator
 
-Internal B2B store locator displaying all retail partners on an interactive map.
+Two interactive maps displaying the retail partners of Les Imprimeuses:
 
-**Live URL:** https://benbraun1.github.io/store-locator
+- **Internal B2B dashboard** (`index.html`) — all partners, with channel breakdown, order history and activity status. For internal use only.
+- **Public reseller finder** (`public.html`) — active partners only, name + city, light theme, mobile-friendly. Safe to link from the public website.
+
+**URLs:**
+- Internal: https://benbraun1.github.io/store-locator/
+- Public: https://benbraun1.github.io/store-locator/public.html
 
 ---
 
 ## Overview
 
-A static web app (single HTML file) hosted on GitHub Pages. It reads a published CSV from Google Sheets, which is itself updated nightly from Shopify via Matrixify.
+Two static HTML pages hosted on GitHub Pages. Both read the same published CSV from Google Sheets, which is updated nightly from Shopify via Matrixify — so a single data pipeline feeds both views.
 
 ```
 Shopify → Matrixify → Google Sheets (Feuille 1)
@@ -26,7 +31,9 @@ Shopify → Matrixify → Google Sheets (Feuille 1)
 
 | File | Purpose |
 |------|---------|
-| `index.html` | The entire app — map, sidebar, filters, styling |
+| `index.html` | Internal dashboard — dark theme, channel filters, full order details |
+| `public.html` | Public reseller finder — light theme, active partners only, mobile drawer |
+| `guide_operationnel_store_locator.docx` | Operational guide for non-developer users |
 | `README.md` | This file |
 
 **Google Sheets** (separate, not in this repo):
@@ -75,6 +82,19 @@ When geocoding fails, an empty row is written to `_geocache` to avoid retrying e
 
 Only customers with `Total Orders > 0`. Customers with no orders are excluded (prospects imported into Shopify but who have never purchased).
 
+The two views apply different filters on top of that:
+
+| | `index.html` (internal) | `public.html` (public) |
+|---|---|---|
+| Active partners (last order < 12 months) | ✓ coloured dot | ✓ uniform purple dot |
+| Inactive partners (≥ 12 months) | ✓ grey dot, below separator | ✗ hidden |
+| Channel distinction (B2B / Faire / Ankorstore) | ✓ colour + filter chips | ✗ not exposed |
+| Order count, lifetime value, last order date | ✓ in detail panel | ✗ never exposed |
+| List contents | all partners, sorted by last order | only partners inside current map bounds, sorted alphabetically |
+| Mobile layout | — | bottom drawer with swipe (< 768px) |
+
+**Privacy note:** `public.html` deliberately exposes only `Address Company`, `Address City` and `Address Country`. No order data, tags, email, or customer ID is rendered. If new fields get added to `_output`, double-check that `public.html`'s `parseCSV()` still only pulls the safe subset before deploying.
+
 ### Active vs inactive
 
 - **Active** (coloured dot): last order < 12 months ago
@@ -105,9 +125,9 @@ Nothing to do — the nightly trigger handles everything automatically.
 2. Run `refreshOutput()` in Apps Script
 3. Reload the map in the browser
 
-### After modifying index.html
+### After modifying index.html or public.html
 
-Push to GitHub via GitHub Desktop. The map updates within ~30 seconds.
+Push to GitHub via GitHub Desktop. The map updates within ~30 seconds. Both files share the same data source — editing one does not affect the other.
 
 ### If many boutiques are suddenly missing
 
@@ -117,14 +137,27 @@ Run `runGeocodeAndRefresh()` manually in Apps Script. Check the execution logs t
 
 ## Key Configuration
 
-In `index.html`:
+In both `index.html` and `public.html`:
 
 ```javascript
-// URL of the published _output sheet (CSV)
+// URL of the published _output sheet (CSV) — must stay in sync across both files
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/...";
+```
 
+`index.html`:
+
+```javascript
 // Months after which a store is considered inactive (grey dot)
 // Currently: 12 months hardcoded in parseCSV()
+```
+
+`public.html`:
+
+```javascript
+const ACTIVE_MONTHS = 12;   // partners older than this are hidden entirely
+const DOT_COLOR   = "#D5A3FF";
+const DOT_BORDER  = "#54215D";
+const LOGO_B64    = "..."; // brand logo embedded as base64 PNG
 ```
 
 In Apps Script:

@@ -240,9 +240,12 @@
       right: 0;
       background: var(--bg);
       border-radius: 18px 18px 0 0;
-      box-shadow: 0 -4px 30px rgba(84,33,93,0.10);
-      z-index: 200;
-      height: calc(100vh - 56px); /* max height */
+      box-shadow: 0 -4px 30px rgba(84,33,93,0.15);
+      z-index: 300;
+      /* Max height = presque tout l'écran */
+      max-height: calc(100dvh - 60px);
+      height: calc(100dvh - 60px);
+      /* Au repos : seul le peek (72px) dépasse du bas */
       transform: translateY(calc(100% - var(--drawer-peek)));
       transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
       will-change: transform;
@@ -314,12 +317,20 @@
       #sidebar { display: none; }
       #drawer { display: flex; flex-direction: column; }
 
-      #map-wrap {
-        height: 100vh;
-        /* Map fills screen, drawer overlays on top */
+      #app {
+        flex-direction: column;
+        height: 100dvh;
       }
 
-      #app { flex-direction: column; }
+      #map-wrap {
+        flex: 1;
+        height: 100dvh;
+      }
+
+      /* Espace en bas pour que le peek du drawer ne cache pas les contrôles */
+      .leaflet-bottom {
+        bottom: calc(var(--drawer-peek) + 8px) !important;
+      }
     }
 
     /* ── ATTRIBUTION ── */
