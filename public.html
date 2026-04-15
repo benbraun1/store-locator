@@ -418,13 +418,18 @@ document.getElementById("logo-img").src = "data:image/png;base64," + LOGO_B64;
 // ── PARSE CSV ─────────────────────────────────────────────────────────────────
 function parseDate(str) {
   if (!str) return null;
-  // iOS Safari ne parse pas "2025-01-19 10:52:53 +0100" — il faut le normaliser
-  // Remplace l'espace par T et le fuseau "+0100" par "+01:00"
-  const normalized = str.trim()
-    .replace(" ", "T")
-    .replace(/([+-])(\d{2})(\d{2})$/, "$1$2:$3");
-  const d = new Date(normalized);
-  return isNaN(d.getTime()) ? null : d;
+  try {
+    // Format CSV : "2025-01-19 10:52:53 +0100"
+    // 1. Remplace le premier espace (entre date et heure) par T
+    // 2. Normalise le fuseau "+0100" → "+01:00"
+    const normalized = str.trim()
+      .replace(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) ([+-]\d{4})$/, "$1T$2$3")
+      .replace(/([+-])(\d{2})(\d{2})$/, "$1$2:$3");
+    const d = new Date(normalized);
+    return isNaN(d.getTime()) ? new Date(str.trim()) : d;
+  } catch(e) {
+    return null;
+  }
 }
 
 function parseCSV(csvText) {
