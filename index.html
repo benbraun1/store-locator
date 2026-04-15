@@ -21,11 +21,13 @@
       --brand: #54215D;
       --brand-light: #D5A3FF;
 
-      --b2b: #54215D;
-      --faire: #ff8c42;
-      --ankorstore: #D5A3FF;
-      --multi: #FCE5E5;
-      --inactive: #555;
+      /* RFM segments */
+      --champion:   #4ADE80; /* vert : récent + gros CA */
+      --loyal:      #60A5FA; /* bleu : fidèle, CA moyen-haut */
+      --new:        #FACC15; /* jaune : récent, faible volume */
+      --atrisk:     #FB923C; /* orange : gros compte qui décroche */
+      --occasional: #A78BFA; /* violet : 1 commande, petit volume */
+      --inactive:   #555;    /* gris : > 12 mois */
 
       --panel-width: 340px;
       --radius: 8px;
@@ -143,15 +145,17 @@
       flex-shrink: 0;
     }
 
-    .chip[data-channel="b2b"] .chip-dot { background: var(--b2b); }
-    .chip[data-channel="faire"] .chip-dot { background: var(--faire); }
-    .chip[data-channel="ankorstore"] .chip-dot { background: var(--ankorstore); }
-    .chip[data-channel="multi"] .chip-dot { background: var(--multi); }
+    .chip[data-segment="champion"]   .chip-dot { background: var(--champion); }
+    .chip[data-segment="loyal"]      .chip-dot { background: var(--loyal); }
+    .chip[data-segment="new"]        .chip-dot { background: var(--new); }
+    .chip[data-segment="atrisk"]     .chip-dot { background: var(--atrisk); }
+    .chip[data-segment="occasional"] .chip-dot { background: var(--occasional); }
 
-    .chip[data-channel="b2b"].active { border-color: var(--b2b); background: rgba(74,158,255,0.08); }
-    .chip[data-channel="faire"].active { border-color: var(--faire); background: rgba(255,140,66,0.08); }
-    .chip[data-channel="ankorstore"].active { border-color: var(--ankorstore); background: rgba(176,111,255,0.08); }
-    .chip[data-channel="multi"].active { border-color: var(--multi); background: rgba(255,209,102,0.08); }
+    .chip[data-segment="champion"].active   { border-color: var(--champion);   background: rgba(74,222,128,0.10); }
+    .chip[data-segment="loyal"].active      { border-color: var(--loyal);      background: rgba(96,165,250,0.10); }
+    .chip[data-segment="new"].active        { border-color: var(--new);        background: rgba(250,204,21,0.10); }
+    .chip[data-segment="atrisk"].active     { border-color: var(--atrisk);     background: rgba(251,146,60,0.10); }
+    .chip[data-segment="occasional"].active { border-color: var(--occasional); background: rgba(167,139,250,0.10); }
 
     /* ── STATS ── */
     #stats-bar {
@@ -197,10 +201,11 @@
     .store-item:hover { background: var(--surface2); }
     .store-item.active { background: var(--surface2); }
 
-    .store-item.active[data-channel="b2b"] { border-left-color: var(--b2b); }
-    .store-item.active[data-channel="faire"] { border-left-color: var(--faire); }
-    .store-item.active[data-channel="ankorstore"] { border-left-color: var(--ankorstore); }
-    .store-item.active[data-channel="multi"] { border-left-color: var(--multi); }
+    .store-item.active[data-segment="champion"]   { border-left-color: var(--champion); }
+    .store-item.active[data-segment="loyal"]      { border-left-color: var(--loyal); }
+    .store-item.active[data-segment="new"]        { border-left-color: var(--new); }
+    .store-item.active[data-segment="atrisk"]     { border-left-color: var(--atrisk); }
+    .store-item.active[data-segment="occasional"] { border-left-color: var(--occasional); }
 
     .store-dot {
       width: 10px; height: 10px;
@@ -265,7 +270,7 @@
       border-bottom: 1px solid var(--border);
     }
 
-    .detail-channel {
+    .detail-segment {
       font-family: 'DM Mono', monospace;
       font-size: 10px;
       letter-spacing: 0.12em;
@@ -273,10 +278,12 @@
       margin-bottom: 4px;
     }
 
-    .detail-channel.b2b { color: var(--b2b); }
-    .detail-channel.faire { color: var(--faire); }
-    .detail-channel.ankorstore { color: var(--ankorstore); }
-    .detail-channel.multi { color: var(--multi); }
+    .detail-segment.champion   { color: var(--champion); }
+    .detail-segment.loyal      { color: var(--loyal); }
+    .detail-segment.new        { color: var(--new); }
+    .detail-segment.atrisk     { color: var(--atrisk); }
+    .detail-segment.occasional { color: var(--occasional); }
+    .detail-segment.inactive   { color: var(--text-dim); }
 
     #detail-name {
       font-size: 16px;
@@ -479,19 +486,22 @@
   </div>
 
   <div id="filters">
-    <div class="filter-label">Canal</div>
+    <div class="filter-label">Segment</div>
     <div class="filter-chips">
-      <div class="chip active" data-channel="b2b">
-        <span class="chip-dot"></span> Direct B2B
+      <div class="chip active" data-segment="champion">
+        <span class="chip-dot"></span> Champions
       </div>
-      <div class="chip active" data-channel="faire">
-        <span class="chip-dot"></span> Faire
+      <div class="chip active" data-segment="loyal">
+        <span class="chip-dot"></span> Fidèles
       </div>
-      <div class="chip active" data-channel="ankorstore">
-        <span class="chip-dot"></span> Ankorstore
+      <div class="chip active" data-segment="new">
+        <span class="chip-dot"></span> Nouveaux
       </div>
-      <div class="chip active" data-channel="multi">
-        <span class="chip-dot"></span> Multi-canal
+      <div class="chip active" data-segment="atrisk">
+        <span class="chip-dot"></span> À relancer
+      </div>
+      <div class="chip active" data-segment="occasional">
+        <span class="chip-dot"></span> Occasionnels
       </div>
     </div>
   </div>
@@ -510,11 +520,12 @@
 <div id="map">
   <!-- LEGEND -->
   <div id="legend">
-    <div class="legend-title">Canal</div>
-    <div class="legend-item"><span class="legend-dot" style="background:var(--b2b)"></span> Direct B2B</div>
-    <div class="legend-item"><span class="legend-dot" style="background:var(--faire)"></span> Faire</div>
-    <div class="legend-item"><span class="legend-dot" style="background:var(--ankorstore)"></span> Ankorstore</div>
-    <div class="legend-item"><span class="legend-dot" style="background:var(--multi)"></span> Multi-canal</div>
+    <div class="legend-title">Segment</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--champion)"></span> Champions <span style="color:var(--text-dim);margin-left:4px">récent + gros CA</span></div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--loyal)"></span> Fidèles <span style="color:var(--text-dim);margin-left:4px">récurrent</span></div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--new)"></span> Nouveaux <span style="color:var(--text-dim);margin-left:4px">à convertir</span></div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--atrisk)"></span> À relancer <span style="color:var(--text-dim);margin-left:4px">décroche</span></div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--occasional)"></span> Occasionnels</div>
     <div class="legend-item"><span class="legend-dot" style="background:#555"></span> <span style="color:var(--text-dim)">Inactif &gt;12 mois</span></div>
   </div>
 
@@ -522,7 +533,7 @@
   <div id="detail-panel">
     <button id="detail-close">×</button>
     <div id="detail-header">
-      <div class="detail-channel" id="detail-channel"></div>
+      <div class="detail-segment" id="detail-segment"></div>
       <div id="detail-name"></div>
       <div id="detail-location"></div>
     </div>
@@ -555,20 +566,30 @@
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj2gRYapY0uubGcn3v5ISdfLXrRH9iX4nRhckJXfy1iVSY_sKia9P8cBiAxc7DBcJ1tdqoTh_yunJG/pub?gid=1600549034&single=true&output=csv";
 const GEOCODE_CACHE_KEY = "li_geocache_v1";
 
-// ── COLORS ──────────────────────────────────────────────────────────────────
+// ── COLORS (RFM segments) ──────────────────────────────────────────────────
 const COLORS = {
-  b2b:        "#54215D",
-  faire:      "#ff8c42",
-  ankorstore: "#D5A3FF",
-  multi:      "#FCE5E5",
-  unknown:    "#666",
+  champion:   "#4ADE80",
+  loyal:      "#60A5FA",
+  new:        "#FACC15",
+  atrisk:     "#FB923C",
+  occasional: "#A78BFA",
+  inactive:   "#555",
+};
+
+const SEGMENT_LABELS = {
+  champion:   "Champion",
+  loyal:      "Fidèle",
+  new:        "Nouveau",
+  atrisk:     "À relancer",
+  occasional: "Occasionnel",
+  inactive:   "Inactif",
 };
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 let allStores = [];
 let visibleStores = [];
 let markers = {};
-let activeFilters = new Set(["b2b", "faire", "ankorstore", "multi"]);
+let activeFilters = new Set(["champion", "loyal", "new", "atrisk", "occasional"]);
 let selectedId = null;
 
 // ── MAP INIT ─────────────────────────────────────────────────────────────────
@@ -578,19 +599,39 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
 }).addTo(map);
 
-// ── PARSE CHANNEL ─────────────────────────────────────────────────────────────
-function parseChannel(tags) {
-  const t = (tags || "").toLowerCase();
-  const hasFaire = t.includes("faire");
-  const hasAnkor = t.includes("ankorstore");
-  const hasB2b   = t.includes("b2b");
+// ── QUANTILE ──────────────────────────────────────────────────────────────────
+function quantile(sortedValues, p) {
+  if (sortedValues.length === 0) return 0;
+  const idx = (sortedValues.length - 1) * p;
+  const lo = Math.floor(idx), hi = Math.ceil(idx);
+  if (lo === hi) return sortedValues[lo];
+  return sortedValues[lo] + (sortedValues[hi] - sortedValues[lo]) * (idx - lo);
+}
 
-  const platforms = (hasFaire ? 1 : 0) + (hasAnkor ? 1 : 0) + (hasB2b ? 1 : 0);
-  if (platforms > 1) return "multi";
-  if (hasB2b) return "b2b";
-  if (hasFaire) return "faire";
-  if (hasAnkor) return "ankorstore";
-  return "unknown";
+// ── RFM SEGMENTATION ──────────────────────────────────────────────────────────
+// Segments :
+//   champion   : récent (< 3 mois)     ET LTV ≥ p75
+//   atrisk     : 3–12 mois             ET LTV ≥ p50 ET ≥ 2 commandes  (décroche)
+//   loyal      : récent OU stale (<6m) ET LTV ≥ p50 ET ≥ 2 commandes
+//   new        : récent (< 3 mois)     ET ≤ 2 commandes
+//   occasional : tout le reste (actif)
+//   inactive   : > 12 mois (gris)
+function classifySegment(store, thresholds, now) {
+  if (!store.isActive) return "inactive";
+
+  const monthsSince = (now - store.lastDate) / (1000 * 60 * 60 * 24 * 30.44);
+  const isRecent  = monthsSince < 3;
+  const isStale   = monthsSince >= 3 && monthsSince < 6;
+  const isDormant = monthsSince >= 6 && monthsSince < 12;
+  const isHighLTV = store.lifetime >= thresholds.p75;
+  const isMidLTV  = store.lifetime >= thresholds.p50;
+  const isRepeat  = store.totalOrders >= 2;
+
+  if (isRecent && isHighLTV) return "champion";
+  if ((isStale || isDormant) && isMidLTV && isRepeat) return "atrisk";
+  if (isRepeat && isMidLTV && (isRecent || isStale)) return "loyal";
+  if (isRecent && !isRepeat) return "new";
+  return "occasional";
 }
 
 // ── PARSE CSV ─────────────────────────────────────────────────────────────────
@@ -615,7 +656,6 @@ function parseCSV(csvText) {
     const lastOrderDate = r["Last Order: Processed At"] ? new Date(r["Last Order: Processed At"]) : null;
     if (!lastOrderDate) return;
 
-    const channel = parseChannel(r["Tags"]);
     const company = r["Address Company"] || `${r["First Name"]} ${r["Last Name"]}`.trim();
     const city    = r["Address City"] || "";
     const country = r["Address Country"] || "";
@@ -625,7 +665,6 @@ function parseCSV(csvText) {
 
     if (!city && !country) return;
 
-    // Actif = commande < 12 mois → couleur canal ; sinon → gris
     const isActive = lastOrderDate >= twelveMonthsAgo;
 
     stores.push({
@@ -636,7 +675,6 @@ function parseCSV(csvText) {
       country,
       zip,
       address:     r["Address Line 1"] || "",
-      channel,
       isActive,
       tags:        r["Tags"] || "",
       lastDate:    lastOrderDate,
@@ -647,6 +685,16 @@ function parseCSV(csvText) {
       lng,
     });
   });
+
+  // Compute LTV quantiles over ACTIVE stores only (inactifs tirent vers le bas sinon)
+  const activeLTVs = stores.filter(s => s.isActive).map(s => s.lifetime).sort((a, b) => a - b);
+  const thresholds = {
+    p50: quantile(activeLTVs, 0.50),
+    p75: quantile(activeLTVs, 0.75),
+  };
+
+  // Assign segment to each store
+  stores.forEach(s => { s.segment = classifySegment(s, thresholds, now); });
 
   // Sort by last order date descending
   stores.sort((a, b) => b.lastDate - a.lastDate);
@@ -664,13 +712,13 @@ function fmtEuro(n) {
   return n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 }
 
-function channelLabel(ch) {
-  return { b2b: "Direct B2B", faire: "Faire", ankorstore: "Ankorstore", multi: "Multi-canal", unknown: "—" }[ch] || ch;
+function segmentLabel(seg) {
+  return SEGMENT_LABELS[seg] || seg;
 }
 
 // ── MARKER CREATION ───────────────────────────────────────────────────────────
 function makeMarker(store) {
-  const color = store.isActive ? (COLORS[store.channel] || COLORS.unknown) : "#555";
+  const color = COLORS[store.segment] || COLORS.inactive;
   const icon = L.divIcon({
     className: "",
     html: `<div style="
@@ -702,7 +750,7 @@ function highlightMarker(id) {
   allStores.forEach(s => {
     const m = markers[s.id];
     if (!m) return;
-    const color = s.isActive ? (COLORS[s.channel] || COLORS.unknown) : "#555";
+    const color = COLORS[s.segment] || COLORS.inactive;
     const isSelected = s.id === id;
     const size = isSelected ? 20 : 14;
     const ring = isSelected ? `0 0 0 4px ${color}66, 0 2px 12px rgba(0,0,0,0.7)` : `0 0 0 3px ${color}33, 0 2px 8px rgba(0,0,0,0.5)`;
@@ -748,9 +796,9 @@ function selectStore(id) {
 
   // Show detail panel
   const panel = document.getElementById("detail-panel");
-  const ch = store.channel;
-  document.getElementById("detail-channel").textContent = channelLabel(ch);
-  document.getElementById("detail-channel").className = `detail-channel ${ch}`;
+  const seg = store.segment;
+  document.getElementById("detail-segment").textContent = segmentLabel(seg);
+  document.getElementById("detail-segment").className = `detail-segment ${seg}`;
   document.getElementById("detail-name").textContent = store.name;
   document.getElementById("detail-location").textContent = [store.city, store.country].filter(Boolean).join(", ");
   document.getElementById("detail-last-date").textContent = fmtDate(store.lastDate);
@@ -771,12 +819,12 @@ function renderList(stores) {
 
   // Active stores first, then inactive with a separator
   const renderStore = (store) => {
-    const color = store.isActive ? (COLORS[store.channel] || COLORS.unknown) : "#555";
+    const color = COLORS[store.segment] || COLORS.inactive;
     const el = document.createElement("div");
     el.className = "store-item";
     if (!store.isActive) el.classList.add("inactive");
     el.dataset.id = store.id;
-    el.dataset.channel = store.channel;
+    el.dataset.segment = store.segment;
     if (store.id === selectedId) el.classList.add("active");
 
     el.innerHTML = `
@@ -821,29 +869,28 @@ function applyFilters() {
   const query = document.getElementById("search").value.toLowerCase().trim();
   const bounds = map.getBounds();
 
-  visibleStores = allStores.filter(s => {
-    const channelOk = activeFilters.has(s.channel) ||
-      (s.channel === "unknown" && activeFilters.size > 0);
+  // Les filtres s'appliquent aux segments actifs ; les inactifs sont toujours
+  // affichés en gris (on ne met pas de chip pour eux — c'est un état, pas un segment).
+  const segmentOk = s => s.segment === "inactive" || activeFilters.has(s.segment);
 
+  visibleStores = allStores.filter(s => {
+    if (!segmentOk(s)) return false;
     if (query) {
-      const searchOk = s.name.toLowerCase().includes(query) ||
+      return s.name.toLowerCase().includes(query) ||
         s.city.toLowerCase().includes(query) ||
         s.country.toLowerCase().includes(query);
-      return channelOk && searchOk;
-    } else {
-      const inBounds = !s.lat || !s.lng || bounds.contains([s.lat, s.lng]);
-      return channelOk && inBounds;
     }
+    const inBounds = !s.lat || !s.lng || bounds.contains([s.lat, s.lng]);
+    return inBounds;
   });
 
-  // Markers: only show stores that pass channel filter
+  // Markers: only show stores that pass segment filter
   allStores.forEach(store => {
     const marker = markers[store.id];
     if (!marker) return;
-    const channelOk = activeFilters.has(store.channel) ||
-      (store.channel === "unknown" && activeFilters.size > 0);
-    if (channelOk && !map.hasLayer(marker)) marker.addTo(map);
-    if (!channelOk && map.hasLayer(marker)) map.removeLayer(marker);
+    const ok = segmentOk(store);
+    if (ok && !map.hasLayer(marker)) marker.addTo(map);
+    if (!ok && map.hasLayer(marker)) map.removeLayer(marker);
   });
 
   renderList(visibleStores);
@@ -897,12 +944,12 @@ async function init() {
 // ── EVENT LISTENERS ───────────────────────────────────────────────────────────
 document.querySelectorAll(".chip").forEach(chip => {
   chip.addEventListener("click", () => {
-    const ch = chip.dataset.channel;
+    const seg = chip.dataset.segment;
     chip.classList.toggle("active");
     if (chip.classList.contains("active")) {
-      activeFilters.add(ch);
+      activeFilters.add(seg);
     } else {
-      activeFilters.delete(ch);
+      activeFilters.delete(seg);
     }
     applyFilters();
   });
