@@ -43,7 +43,7 @@
     /* ── LAYOUT ── */
     #app {
       display: flex;
-      height: 100vh;
+      height: 100dvh;
       width: 100%;
       position: relative;
     }
@@ -234,22 +234,18 @@
     /* ── MOBILE DRAWER ── */
     #drawer {
       display: none;
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
+      flex-shrink: 0;
       background: var(--bg);
       border-radius: 18px 18px 0 0;
-      box-shadow: 0 -4px 30px rgba(84,33,93,0.15);
-      z-index: 300;
-      height: var(--drawer-peek);
+      box-shadow: 0 -4px 20px rgba(84,33,93,0.12);
       overflow: hidden;
+      /* Au repos : juste le peek */
+      height: var(--drawer-peek);
       transition: height 0.35s cubic-bezier(0.32, 0.72, 0, 1);
-      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     #drawer.open {
-      height: calc(100dvh - 60px);
+      height: 60dvh;
     }
 
     #drawer.open #drawer-list {
@@ -313,10 +309,9 @@
       height: 100%;
     }
 
-    /* ── MOBILE MAP HEIGHT ── */
+    /* ── MOBILE ── */
     @media (max-width: 768px) {
       #sidebar { display: none; }
-      #drawer { display: flex; flex-direction: column; }
 
       #app {
         flex-direction: column;
@@ -325,12 +320,13 @@
 
       #map-wrap {
         flex: 1;
-        height: 100dvh;
+        min-height: 0;
+        height: auto;
       }
 
-      /* Espace en bas pour que le peek du drawer ne cache pas les contrôles */
-      .leaflet-bottom {
-        bottom: calc(var(--drawer-peek) + 8px) !important;
+      #drawer {
+        display: flex;
+        flex-direction: column;
       }
     }
 

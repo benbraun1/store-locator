@@ -2,7 +2,7 @@
 
 Two interactive maps displaying the retail partners of Les Imprimeuses:
 
-- **Internal B2B dashboard** (`index.html`) — all partners, with channel breakdown, order history and activity status. For internal use only.
+- **Internal B2B dashboard** (`index.html`) — all partners, with RFM-based segmentation, order history and activity status. For internal use only.
 - **Public reseller finder** (`public.html`) — active partners only, name + city, light theme, mobile-friendly. Safe to link from the public website.
 
 **URLs:**
@@ -31,7 +31,7 @@ Shopify → Matrixify → Google Sheets (Feuille 1)
 
 | File | Purpose |
 |------|---------|
-| `index.html` | Internal dashboard — dark theme, channel filters, full order details |
+| `index.html` | Internal dashboard — dark theme, RFM segment filters, full order details |
 | `public.html` | Public reseller finder — light theme, active partners only, mobile drawer |
 | `guide_operationnel_store_locator.docx` | Operational guide for non-developer users |
 | `README.md` | This file |
@@ -88,7 +88,7 @@ The two views apply different filters on top of that:
 |---|---|---|
 | Active partners (last order < 12 months) | ✓ coloured dot | ✓ uniform purple dot |
 | Inactive partners (≥ 12 months) | ✓ grey dot, below separator | ✗ hidden |
-| Channel distinction (B2B / Faire / Ankorstore) | ✓ colour + filter chips | ✗ not exposed |
+| Segment colour coding (RFM) | ✓ colour + filter chips | ✗ uniform dot |
 | Order count, lifetime value, last order date | ✓ in detail panel | ✗ never exposed |
 | List contents | all partners, sorted by last order | only partners inside current map bounds, sorted alphabetically |
 | Mobile layout | — | bottom drawer with swipe (< 768px) |
@@ -100,16 +100,22 @@ The two views apply different filters on top of that:
 - **Active** (coloured dot): last order < 12 months ago
 - **Inactive** (grey dot): last order ≥ 12 months ago, shown below a separator in the sidebar
 
-### Channels
+### Segments (RFM)
 
-Determined from Shopify `Tags`:
+`index.html` classifies each active partner into one of five actionable segments based on **Recency** (months since last order), **Frequency** (total orders) and **Monetary** value (lifetime spend). Inactive partners form a sixth group.
 
-| Tag | Colour | Label |
-|-----|--------|-------|
-| `b2b` | `#54215D` (purple) | Direct B2B |
-| `Faire` | `#ff8c42` (orange) | Faire |
-| `Ankorstore` | `#D5A3FF` (light purple) | Ankorstore |
-| multiple | `#FCE5E5` (pink) | Multi-canal |
+| Segment | Colour | Rule |
+|---------|--------|------|
+| **Champions** | `#4ADE80` (green) | Recent (< 3 months) and high LTV (≥ p75) |
+| **Fidèles** | `#60A5FA` (blue) | Repeat buyer (≥ 2 orders), mid-to-high LTV (≥ p50), last order < 6 months |
+| **Nouveaux** | `#FACC15` (yellow) | Single order, < 3 months ago |
+| **À relancer** | `#FB923C` (orange) | Mid-to-high LTV repeat buyer, last order 3–12 months ago |
+| **Occasionnels** | `#A78BFA` (violet) | Everything else active (low LTV, irregular) |
+| **Inactifs** | `#555` (grey) | Last order ≥ 12 months — shown under separator, toggleable |
+
+The **p50 / p75 thresholds are computed live** from the active cohort's lifetime value distribution on every page load, so the segmentation auto-adapts as the customer base grows. No hardcoded euro values.
+
+Each segment has its own filter chip in the top bar (including `Inactifs`), so users can isolate e.g. Champions + À relancer for a targeted campaign.
 
 ---
 
@@ -159,6 +165,12 @@ const DOT_COLOR   = "#D5A3FF";
 const DOT_BORDER  = "#54215D";
 const LOGO_B64    = "..."; // brand logo embedded as base64 PNG
 ```
+
+Implementation notes on `public.html`:
+
+- **`parseDate()` helper** — robust parsing of Shopify's `"2025-01-19 10:52:53 +0100"` timestamps, normalized to ISO before passing to `Date`.
+- **Cache-busting** — the CSV fetch appends `&t=Date.now()` so stale CDN copies never stick.
+- **Mobile drawer** — uses `100dvh` + `env(safe-area-inset-bottom)` and animates via `height` (not `transform`) so Leaflet attribution stays above the drawer peek on iOS.
 
 In Apps Script:
 
