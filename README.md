@@ -1,19 +1,21 @@
 # Les Imprimeuses — Store Locator
 
-Two interactive maps displaying the retail partners of Les Imprimeuses:
+Three interactive maps displaying the retail partners of Les Imprimeuses:
 
 - **Internal B2B dashboard** (`index.html`) — all partners, with RFM-based segmentation, order history and activity status. For internal use only.
+- **Internal mobile map** (`mobile.html`) — same data and segmentation as the dashboard, stripped down for a smartphone: full-screen map, tappable dots, reseller card in a bottom sheet. For internal use only.
 - **Public reseller finder** (`public.html`) — active partners only, name + city, light theme, mobile-friendly. Safe to link from the public website.
 
 **URLs:**
 - Internal: https://benbraun1.github.io/store-locator/
+- Internal mobile: https://benbraun1.github.io/store-locator/mobile.html
 - Public: https://benbraun1.github.io/store-locator/public.html
 
 ---
 
 ## Overview
 
-Two static HTML pages hosted on GitHub Pages. Both read the same published CSV from Google Sheets, which is updated nightly from Shopify via Matrixify — so a single data pipeline feeds both views.
+Three static HTML pages hosted on GitHub Pages. All three read the same published CSV from Google Sheets, which is updated nightly from Shopify via Matrixify — so a single data pipeline feeds every view.
 
 ```
 Shopify → Matrixify → Google Sheets (Feuille 1)
@@ -22,7 +24,7 @@ Shopify → Matrixify → Google Sheets (Feuille 1)
                               ↓
                     Google Sheets (_output CSV)
                               ↓
-                    index.html (GitHub Pages)
+          index.html / mobile.html / public.html (GitHub Pages)
 ```
 
 ---
@@ -32,6 +34,7 @@ Shopify → Matrixify → Google Sheets (Feuille 1)
 | File | Purpose |
 |------|---------|
 | `index.html` | Internal dashboard — dark theme, RFM segment filters, full order details |
+| `mobile.html` | Internal mobile map — dark theme, full-screen map, tappable dots, bottom-sheet reseller card |
 | `public.html` | Public reseller finder — light theme, active partners only, mobile drawer |
 | `guide_operationnel_store_locator.docx` | Operational guide for non-developer users |
 | `README.md` | This file |
@@ -65,7 +68,7 @@ Shopify → Matrixify → Google Sheets (Feuille 1)
    - For each address not yet in `_geocache`, calls geocode.maps.co API
    - Writes new coordinates to `_geocache`
    - Rebuilds `_output` by joining `Feuille 1` with `_geocache`
-4. **index.html** fetches the published `_output` CSV on every page load
+4. **index.html**, **mobile.html** and **public.html** fetch the published `_output` CSV on every page load
 
 ### Geocoding cache
 
@@ -82,18 +85,19 @@ When geocoding fails, an empty row is written to `_geocache` to avoid retrying e
 
 Only customers with `Total Orders > 0`. Customers with no orders are excluded (prospects imported into Shopify but who have never purchased).
 
-The two views apply different filters on top of that:
+The three views apply different filters on top of that:
 
-| | `index.html` (internal) | `public.html` (public) |
-|---|---|---|
-| Active partners (last order < 12 months) | ✓ coloured dot | ✓ uniform purple dot |
-| Inactive partners (≥ 12 months) | ✓ grey dot, below separator | ✗ hidden |
-| Segment colour coding (RFM) | ✓ colour + filter chips | ✗ uniform dot |
-| Order count, lifetime value, last order date | ✓ in detail panel | ✗ never exposed |
-| List contents | all partners, sorted by last order | only partners inside current map bounds, sorted alphabetically |
-| Mobile layout | — | bottom drawer with swipe (< 768px) |
+| | `index.html` (internal) | `mobile.html` (internal) | `public.html` (public) |
+|---|---|---|---|
+| Active partners (last order < 12 months) | ✓ coloured dot | ✓ coloured dot | ✓ uniform purple dot |
+| Inactive partners (≥ 12 months) | ✓ grey dot, below separator | ✓ grey dot, toggleable | ✗ hidden |
+| Segment colour coding (RFM) | ✓ colour + filter chips | ✓ colour + filter chips | ✗ uniform dot |
+| Order count, lifetime value, last order date | ✓ in detail panel | ✓ in bottom sheet | ✗ never exposed |
+| List contents | all partners, sorted by last order | no list — map only | only partners inside current map bounds, sorted alphabetically |
+| Search | ✓ | ✗ | ✗ |
+| Mobile layout | — | designed for phones (full-screen map, swipe-to-close sheet, "my position" button) | bottom drawer with swipe (< 768px) |
 
-**Privacy note:** `public.html` deliberately exposes only `Address Company`, `Address City` and `Address Country`. No order data, tags, email, or customer ID is rendered. If new fields get added to `_output`, double-check that `public.html`'s `parseCSV()` still only pulls the safe subset before deploying.
+**Privacy note:** `mobile.html` shows the same commercial data as `index.html` (amounts, order counts, tags, email) — do not link it publicly. `public.html` deliberately exposes only `Address Company`, `Address City` and `Address Country`. No order data, tags, email, or customer ID is rendered. If new fields get added to `_output`, double-check that `public.html`'s `parseCSV()` still only pulls the safe subset before deploying.
 
 ### Active vs inactive
 
@@ -131,9 +135,9 @@ Nothing to do — the nightly trigger handles everything automatically.
 2. Run `refreshOutput()` in Apps Script
 3. Reload the map in the browser
 
-### After modifying index.html or public.html
+### After modifying index.html, mobile.html or public.html
 
-Push to GitHub via GitHub Desktop. The map updates within ~30 seconds. Both files share the same data source — editing one does not affect the other.
+Push to GitHub via GitHub Desktop. The map updates within ~30 seconds. All files share the same data source — editing one does not affect the others.
 
 ### If many boutiques are suddenly missing
 
@@ -143,10 +147,10 @@ Run `runGeocodeAndRefresh()` manually in Apps Script. Check the execution logs t
 
 ## Key Configuration
 
-In both `index.html` and `public.html`:
+In `index.html`, `mobile.html` and `public.html`:
 
 ```javascript
-// URL of the published _output sheet (CSV) — must stay in sync across both files
+// URL of the published _output sheet (CSV) — must stay in sync across all three files
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/...";
 ```
 
@@ -156,6 +160,22 @@ const CSV_URL = "https://docs.google.com/spreadsheets/d/e/...";
 // Months after which a store is considered inactive (grey dot)
 // Currently: 12 months hardcoded in parseCSV()
 ```
+
+`mobile.html`:
+
+```javascript
+const ACTIVE_MONTHS = 12;   // partners older than this are shown as grey "Inactifs"
+const LOGO_B64      = "..."; // brand logo embedded as base64 PNG
+```
+
+Implementation notes on `mobile.html`:
+
+- **Same RFM logic as `index.html`** — `classifySegment()`, `quantile()` and `parseCSV()` are copied verbatim (plus `parseDate()` from `public.html`). If the segmentation rules change in `index.html`, change them here too.
+- **Initial view** fits the dense core of stores (within ~6° lat / 8° lng of the median position), not every marker — otherwise the handful of far-away resellers (Japan, USA, Korea) would force zoom level 1 on a phone screen. Those stores are still on the map, just zoom out.
+- **Tappable dots** — each marker has a 32px touch target around a 16px dot (24px when selected).
+- **Bottom sheet** — opens on tap, closes on map tap, on the × or by swiping down. The map pans so the selected dot stays visible above the sheet.
+- **"Itinéraire" button** opens Apple Plans on iOS and Google Maps elsewhere; **"Email"** is a `mailto:` link (hidden if the store has no email).
+- **"Ma position" button** (bottom right) uses the browser geolocation API to centre the map on the user.
 
 `public.html`:
 
