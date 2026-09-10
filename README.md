@@ -5,11 +5,13 @@ Three interactive maps displaying the retail partners of Les Imprimeuses:
 - **Internal B2B dashboard** (`index.html`) — all partners, with RFM-based segmentation, order history and activity status. For internal use only.
 - **Internal mobile map** (`mobile.html`) — same data and segmentation as the dashboard, stripped down for a smartphone: full-screen map, tappable dots, reseller card in a bottom sheet. For internal use only.
 - **Public reseller finder** (`public.html`) — active partners only, name + city, light theme, mobile-friendly. Safe to link from the public website.
+- **Encrypted reseller notebook** (`carnet/index.html`) — password-protected directory of every partner that has ordered, for use on the stand at trade shows (Maison & Objet, Sept. 2026). The data is an AES-256-GCM encrypted snapshot embedded in the page; nothing is readable without the password. For internal use only.
 
 **URLs:**
 - Internal: https://benbraun1.github.io/store-locator/
 - Internal mobile: https://benbraun1.github.io/store-locator/mobile.html
 - Public: https://benbraun1.github.io/store-locator/public.html
+- Carnet revendeurs (password): https://benbraun1.github.io/store-locator/carnet/
 
 ---
 
@@ -36,6 +38,8 @@ Shopify → Matrixify → Google Sheets (Feuille 1)
 | `index.html` | Internal dashboard — dark theme, RFM segment filters, full order details |
 | `mobile.html` | Internal mobile map — dark theme, full-screen map, tappable dots, bottom-sheet reseller card |
 | `public.html` | Public reseller finder — light theme, active partners only, mobile drawer |
+| `carnet/index.html` | Encrypted reseller notebook — password gate, searchable directory, RFM segments, contact/order details, "seen at the show" notes |
+| `carnet/build.mjs` | Rebuilds the encrypted snapshot inside `carnet/index.html` from a customer CSV export |
 | `guide_operationnel_store_locator.docx` | Operational guide for non-developer users |
 | `README.md` | This file |
 
@@ -216,3 +220,23 @@ const GEOCODE_API_KEY = "69afdc9a92f5a021371582xjw3e1569"; // geocode.maps.co
 - **Hosting**: GitHub Pages
 - **Geocoding**: geocode.maps.co
 - **Automation**: Google Apps Script
+
+---
+
+## Carnet revendeurs (encrypted notebook)
+
+`carnet/index.html` does **not** read the live Google Sheets CSV. It embeds a snapshot of the customer export, encrypted with AES-256-GCM (key derived from the password with PBKDF2-SHA256, 300 000 iterations). Decryption happens in the browser via WebCrypto, so the page must be served over HTTPS (GitHub Pages) or opened from `localhost`/`file://`.
+
+What it shows once unlocked: every customer with at least one order — company, contact, e-mail, phone, address, tags, Shopify note, first/last order, lifetime value, order count, and the same RFM segment as the internal dashboard. Per-store "Vu au salon" checkbox and free-text notes are stored in the browser (`localStorage`) and can be exported as CSV with the **Notes ↓** button. The password is kept in `sessionStorage` for the life of the tab only; the 🔒 button clears it.
+
+### Refresh the data
+
+1. Export the customers from the Google Sheet **Export clients B2B - pour store locator** (File → Download → CSV of `Feuille 1`), or use any Matrixify customer export with the same columns.
+2. Run, with Node ≥ 18 (no dependencies):
+   ```bash
+   CARNET_PASSWORD='…' node carnet/build.mjs --csv export.csv --source "Export clients B2B (Google Sheets)"
+   ```
+   Without `CARNET_PASSWORD` the script prompts for the password. It rewrites the `<script id="payload">` block of `carnet/index.html` — never edit that block by hand.
+3. Commit and push `carnet/index.html`. The password itself is never stored in the repo.
+
+To change the password, simply rebuild with a new `CARNET_PASSWORD`.
