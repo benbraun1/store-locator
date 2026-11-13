@@ -571,6 +571,16 @@
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj2gRYapY0uubGcn3v5ISdfLXrRH9iX4nRhckJXfy1iVSY_sKia9P8cBiAxc7DBcJ1tdqoTh_yunJG/pub?gid=1600549034&single=true&output=csv";
 const GEOCODE_CACHE_KEY = "li_geocache_v1";
 
+// ── CORRECTIONS MANUELLES ───────────────────────────────────────────────────
+// Corrections appliquées par-dessus les données Shopify, indexées par ID client.
+// Même bloc dans index.html / mobile.html / public.html — à garder synchronisé.
+const NAME_OVERRIDES = {
+  "7726850900301": "Chez Bogato",   // adresse par défaut Shopify = "Anais OLMER" (nom de la gérante)
+};
+const EXCLUDED_IDS = new Set([
+  "9646047822157",                  // Luka Luna — commande #4806443 annulée, jamais livré
+]);
+
 // ── COLORS (RFM segments) ──────────────────────────────────────────────────
 const COLORS = {
   champion:   "#4ADE80",
@@ -657,11 +667,12 @@ function parseCSV(csvText) {
     // Exclure les clients sans commande
     const totalOrders = parseInt(r["Total Orders"]) || 0;
     if (totalOrders === 0) return;
+    if (EXCLUDED_IDS.has(r["ID"])) return;
 
     const lastOrderDate = r["Last Order: Processed At"] ? new Date(r["Last Order: Processed At"]) : null;
     if (!lastOrderDate) return;
 
-    const company = r["Address Company"] || `${r["First Name"]} ${r["Last Name"]}`.trim();
+    const company = NAME_OVERRIDES[r["ID"]] || r["Address Company"] || `${r["First Name"]} ${r["Last Name"]}`.trim();
     const city    = r["Address City"] || "";
     const country = r["Address Country"] || "";
     const zip     = r["Address Zip"] || "";
