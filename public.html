@@ -392,9 +392,6 @@ const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj2gRYapY0uubG
 const NAME_OVERRIDES = {
   "7726850900301": "Chez Bogato",   // adresse par défaut Shopify = "Anais OLMER" (nom de la gérante)
 };
-const EXCLUDED_IDS = new Set([
-  "9646047822157",                  // Luka Luna — commande #4806443 annulée, jamais livré
-]);
 const DOT_COLOR = "#D5A3FF";
 const DOT_BORDER = "#54215D";
 const ACTIVE_MONTHS = 12;
@@ -451,7 +448,8 @@ function parseCSV(csvText) {
   rows.forEach((r, i) => {
     const totalOrders = parseInt(r["Total Orders"]) || 0;
     if (totalOrders === 0) return;
-    if (EXCLUDED_IDS.has(r["ID"])) return;
+    // Exclure les clients à 0 € dépensé (commandes annulées / remboursées)
+    if ((parseFloat(r["Total Spent"]) || 0) === 0) return;
 
     const lastOrderDate = parseDate(r["Last Order: Processed At"]);
     if (!lastOrderDate) return;

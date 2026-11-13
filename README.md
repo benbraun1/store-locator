@@ -83,7 +83,9 @@ When geocoding fails, an empty row is written to `_geocache` to avoid retrying e
 
 ### What gets displayed
 
-Only customers with `Total Orders > 0`. Customers with no orders are excluded (prospects imported into Shopify but who have never purchased).
+Only customers with `Total Orders > 0` **and** `Total Spent > 0`. Customers with no orders are excluded (prospects imported into Shopify but who have never purchased), and so are customers whose orders were all cancelled or refunded (Shopify still counts those orders, but `Total Spent` drops to 0).
+
+`NAME_OVERRIDES` (top of each HTML file, keyed by Shopify customer ID) forces a display name when the default address's `Address Company` is wrong. Prefer fixing the company directly in Shopify; the override can then be removed.
 
 The three views apply different filters on top of that:
 

@@ -577,9 +577,6 @@ const GEOCODE_CACHE_KEY = "li_geocache_v1";
 const NAME_OVERRIDES = {
   "7726850900301": "Chez Bogato",   // adresse par défaut Shopify = "Anais OLMER" (nom de la gérante)
 };
-const EXCLUDED_IDS = new Set([
-  "9646047822157",                  // Luka Luna — commande #4806443 annulée, jamais livré
-]);
 
 // ── COLORS (RFM segments) ──────────────────────────────────────────────────
 const COLORS = {
@@ -667,7 +664,8 @@ function parseCSV(csvText) {
     // Exclure les clients sans commande
     const totalOrders = parseInt(r["Total Orders"]) || 0;
     if (totalOrders === 0) return;
-    if (EXCLUDED_IDS.has(r["ID"])) return;
+    // Exclure les clients à 0 € dépensé (commandes annulées / remboursées)
+    if ((parseFloat(r["Total Spent"]) || 0) === 0) return;
 
     const lastOrderDate = r["Last Order: Processed At"] ? new Date(r["Last Order: Processed At"]) : null;
     if (!lastOrderDate) return;
